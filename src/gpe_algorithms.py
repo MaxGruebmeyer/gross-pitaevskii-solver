@@ -5,6 +5,11 @@ from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
 from scipy.optimize import minimize_scalar
 
+import logging
+
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
+
 def grad_squared(v, h, steps):
     """
     Resize vector to 2D array to calculate x and y gradient.
@@ -234,7 +239,7 @@ def dampened_inverse_iteration(A, calc_E, dim, max_steps, tol):
                 raise Exception("Could not optimize for tau!")
 
             tau = opt_tau.x
-            print(f"Dampening chose optimal tau={tau}.")
+            logging.debug(f"Dampening chose optimal tau={tau}.")
 
             # compute_line is already normalized
             u_cur = compute_line(tau, u_cur, u_last)
@@ -248,7 +253,7 @@ def dampened_inverse_iteration(A, calc_E, dim, max_steps, tol):
         if diff < tol:
             # At least one more run to make sure diff < tol isn't because of small damping steps
             if damping:
-                print(f"Turned off damping after {i + 1} steps because of diff < tol!")
+                logging.debug(f"Turned off damping after {i + 1} steps because of diff < tol!")
                 damping = False
             else:
                 residuum = norm(iterated_values[:i] - u_cur, axis=1)
@@ -259,7 +264,7 @@ def dampened_inverse_iteration(A, calc_E, dim, max_steps, tol):
                 return (True, i, u_cur, residuum, energy[:i], diffs)
 
         if damping and diff < damping_stop:
-            print(f"Turned off damping after {i + 1} steps!")
+            logging.debug(f"Turned off damping after {i + 1} steps!")
             damping = False
         
         u_last = u_cur
