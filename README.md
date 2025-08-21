@@ -43,8 +43,6 @@ method** we can solve it using various iterative algorithms:
 algorithm used in numerical linear algebra to find the smallest eigenvector
 of an operator. It linearizes the problem in each step by just plugging in
 $u_n$ into the function $A$.
-For nonlinear problems, it can suffer from instability and failure
-to converge for high nonlinearity.
 - **Dampened Inverse Iteration**:
 An enhanced method based on an adaptive dampening parameter $\tau_n$ which is
 determined in each step via line search.
@@ -55,13 +53,16 @@ $\tau_n$ is set to $1$ to achieve the asymptotically fastest convergence rate.
 For $tau_n = 1$ this method is the same as the inverse iteration algorithm.
 - **Shifted Inverse Iteration**: This algorithm uses the **Rayleigh quotient**
 to dynamically shift the operator at each step, aiming to accelerate convergence.
+This idea is drawn from the numerical linear algebra's "classical" inverse iteration,
+however the A-Method does not react favourably to such shifts.
 
 ## Results and Analysis
 
 The dampened and the normal inverse iteration show almost identical behaviour
 with the normal version converging "smoother" than the dampened version.
-For small nonlinearities the dampened version has a tiny edge, while for larger
-nonlinearities the undampened version actually converges faster.
+For small nonlinearities $\beta = 10^{-1}, 10^0, 10^1$ the dampened version
+has a tiny edge, while for larger
+nonlinearities $\beta = 10^3$ the undampened version actually converges faster.
 As-is there is no reason to use the dampened version. It may converge a tiny
 bit faster for small nonlinearities, but it's not worth the overhead of the
 line search algorithm.
@@ -72,9 +73,12 @@ this with an alternative algorithm might lead to faster convergence.
 
 While the normal and the dampened version of the inverse iteration both
 seem to be working fine, this cannot be said about the shifted inverse iteration.
-Convergence seems almost random and for some nonlinearity parameters it does not
+Convergence seems almost random and for some nonlinearity parameters like
+$\beta = 10^2$ it does not
 converge at all. It seems the A-Method is not suited for shifting, which was
 observed empirically for other problems as well.
+The very high number of steps for $\beta = 10^0$ and $\beta = 10^3$ also
+suggests numerical instability.
 
 ## Project structure
 
