@@ -107,3 +107,6 @@ performance of the dampened inverse iteration.
 - Currently the program always uses a normalized $1$-Vector ($(1, 1, ..., 1)$)
 as a starting point, which could be drawn from a distribution instead,
 analyzing how the methods react to different starting vectors.
+- Instead of using $\beta = 10^{-1}, 10^0, 10^1, ...$ for the nonlinearity parameter
+these could be drawn from a distribution to
+get more insights about convergence behaviour for different nonlinearities
