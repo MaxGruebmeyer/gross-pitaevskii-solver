@@ -104,3 +104,6 @@ Furthermore shifting with the J-Method is said to be highly effective (as oppose
 to the A-Methods abysmal reaction to shifts).
 - Replace `minimize_scalar` with custom line search algorithm to improve
 performance of the dampened inverse iteration.
+- Currently the program always uses a normalized $1$-Vector ($(1, 1, ..., 1)$)
+as a starting point, which could be drawn from a distribution instead,
+analyzing how the methods react to different starting vectors.
