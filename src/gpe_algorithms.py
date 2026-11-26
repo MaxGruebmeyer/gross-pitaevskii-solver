@@ -280,12 +280,17 @@ def dampened_inverse_iteration(A, calc_E, dim, max_steps, tol):
 
     return (success, n, u_cur, *get_history(iterates[:n + 1], energy[:n + 1]))
 
-def shifted_inverse_iteration(A, calc_E, dim, max_steps, tol):
+def shifted_inverse_iteration(A, calc_E, dim, max_steps, tol, sigma):
     """
-    Run the inverse iteration algorithm with dynamic shifting.
+    Run the inverse iteration algorithm with a fixed shift.
 
-    The algorithm applies a Rayleigh-quotient shift at each step 
-    (based on the last iterate) to accelerate convergence.
+    Implements the shifted inverse iteration from [Hen24, Def. 5.1]:
+        uⁿ⁺¹ = (A(uⁿ) - σI)⁻¹ uⁿ / ||(A(uⁿ) - σI)⁻¹ uⁿ||
+    with a fixed shift σ ≠ λ. For linear problems, shifting σ towards the
+    smallest eigenvalue λ accelerates convergence. For the GPE, [Hen24, Sec. 5]
+    shows that the convergence rate contains the weighting function
+    1 - 2β/(λ-σ)|u|², which blows up for σ → λ, so that shifting can slow
+    down or destroy convergence, in particular for large β.
 
     Parameters
     ----------
@@ -300,6 +305,8 @@ def shifted_inverse_iteration(A, calc_E, dim, max_steps, tol):
         Maximum number of iterations allowed.
     tol : float
         Convergence tolerance for stopping criterion (based on ||uⁿ - uⁿ⁻¹||).
+    sigma : float
+        Fixed shift σ, typically 0 ≤ σ < λ (σ = 0 is the basic inverse iteration).
 
     Returns
     -------
@@ -320,7 +327,7 @@ def shifted_inverse_iteration(A, calc_E, dim, max_steps, tol):
         Differences ||uⁿ - uⁿ⁻¹|| between consecutive iterates,
         for n = 1, ..., N (length N).
     """
-    ones = np.ones(dim)
+    shift = diags(np.full(dim, float(sigma)))
     u_last = get_start_vector(dim)
 
     # Row n holds the n-th iterate uⁿ, row 0 is the start vector
@@ -331,17 +338,13 @@ def shifted_inverse_iteration(A, calc_E, dim, max_steps, tol):
 
     success = False
     for n in range(1, max_steps + 1):
-        A_u = A(u_last)
-        shift = u_last.T @ A_u @ u_last / (u_last.T @ u_last)
-        
-        u_cur = spsolve(A_u - diags(shift * ones), u_last)
+        u_cur = spsolve(A(u_last) - shift, u_last)
         u_cur /= norm(u_cur)
 
-        # The Rayleigh quotient is >= the smallest eigenvalue of A_u, so
-        # A_u - shift*I has a negative eigenvalue along the ground state and the
-        # solve flips the sign of the ground-state component. Since A(u) only
-        # depends on u², u and -u are equivalent: align the sign with u_last so
-        # that ||u_cur - u_last|| measures actual convergence.
+        # If σ is larger than the smallest eigenvalue of A(uⁿ), the solve flips
+        # the sign of the ground-state component ([JKM12, Prop. 2.2]). Since
+        # A(u) only depends on u², u and -u are equivalent: align the sign with
+        # u_last so that ||u_cur - u_last|| measures actual convergence.
         if u_cur @ u_last < 0:
             u_cur = -u_cur
 
