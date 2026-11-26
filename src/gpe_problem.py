@@ -1,6 +1,33 @@
 import numpy as np
 from scipy.sparse import diags, kron
 
+def get_grid(bound, steps):
+    """
+    Construct the interior grid points of [-bound, bound] in one dimension.
+
+    The interval is divided into equidistant steps of lenght h. Since the
+    wavefunction vanishes on the boundary (Dirichlet) only the interiour points
+    are unknown. (cf. [JKM12, Sec. 5.1]).
+
+    Parameters
+    ----------
+    bound : float
+        Half-width of the domain (grid spans [-bound, bound]).
+    steps : int
+        Number of interior grid points along one dimension.
+
+    Returns
+    -------
+    x : ndarray
+        The steps interior grid points.
+    h : float
+        Grid spacing, 2 * bound / (steps + 1).
+    """
+    x = np.linspace(-bound, bound, steps + 2)[1:-1]
+    h = 2 * bound / (steps + 1)
+    return x, h
+
+
 def get_D2(dim_sqrt, h_inv_sq):
     """
     Construct the 1D discrete Laplacian matrix.
@@ -59,14 +86,15 @@ def get_M(bound, steps):
 
     The potential is defined as 
         V(x, y) = 0.5 * (x² + y²),
-    discretized on the square domain [-bound, bound]² with a uniform grid.
+    evaluated at the interior points of a uniform grid on the square
+    domain [-bound, bound]² (see get_grid).
 
     Parameters
     ----------
     bound : float
         Half-width of the square domain (grid spans [-bound, bound]).
     steps : int
-        Number of grid points along each dimension.
+        Number of interior grid points along each dimension.
 
     Returns
     -------
@@ -74,9 +102,8 @@ def get_M(bound, steps):
         Sparse diagonal matrix (size steps² × steps²) with the potential
         values on the diagonal.
     """
-    x = np.linspace(-bound, bound, steps)
-    y = np.linspace(-bound, bound, steps)
-    X, Y = np.meshgrid(x, y)
+    x, _ = get_grid(bound, steps)
+    X, Y = np.meshgrid(x, x)
 
     f = lambda x, y: 0.5 * (x * x + y * y)
     Z = f(X, Y)
