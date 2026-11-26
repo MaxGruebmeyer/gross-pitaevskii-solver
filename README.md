@@ -13,13 +13,13 @@ and further discussed in [Hen24](https://arxiv.org/abs/2202.07593).
 The ground state of the GPE corresponds to the solution with the minimum energy.
 Finding this solution is crucial for understanding the properties of BECs,
 such as their density profile and stability. Direct iterative methods can be
-unstable or slow to converge, especially for strong inter-particel interactions
+unstable or slow to converge, especially for strong inter-particle interactions
 (high nonlinearity). This project explores and compares three common inverse
 iteration approaches to find a robust and efficient solution method.
 
 ## Numerical approach
 
-As discussed in [Hen24](https://arxiv.org/abs/2202.07593) the continous PDE
+As discussed in [Hen24](https://arxiv.org/abs/2202.07593) the continuous PDE
 can be reformulated as an infinite-dimensional nonlinear eigenvalue problem
 of the form:
 
@@ -47,38 +47,24 @@ $u_n$ into the function $A$.
 An enhanced method based on an adaptive dampening parameter $\tau_n$ which is
 determined in each step via line search.
 This ensures that the energy of the system
-decreses with every iteration, guaranteeing convergence to a stable ground solution.
+decreases with every iteration, guaranteeing convergence to a stable ground solution
+provided a non-negative start vector and $\tau \in (0, 2)$.
 Once the value is deemed to be in a neighbourhood of the optimal solution $\hat{u}$
 $\tau_n$ is set to $1$ to achieve the asymptotically fastest convergence rate.
-For $tau_n = 1$ this method is the same as the inverse iteration algorithm.
-- **Shifted Inverse Iteration**: This algorithm uses the **Rayleigh quotient**
-to dynamically shift the operator at each step, aiming to accelerate convergence.
-This idea is drawn from the numerical linear algebra's "classical" inverse iteration,
-however the A-Method does not react favourably to such shifts.
+For $\tau_n = 1$ this method is the same as the inverse iteration algorithm.
+- **Shifted Inverse Iteration**: Instead of using the Rayleigh qoutient it sues
+Hen24's Def 5.1 with a fixed shift.
 
 ## Results and Analysis
 
-The dampened and the normal inverse iteration show almost identical behaviour
-with the normal version converging "smoother" than the dampened version.
-For small nonlinearities $\beta = 10^{-1}, 10^0, 10^1$ the dampened version
-has a tiny edge, while for larger
-nonlinearities $\beta = 10^3$ the undampened version actually converges faster.
-As-is there is no reason to use the dampened version. It may converge a tiny
-bit faster for small nonlinearities, but it's not worth the overhead of the
-line search algorithm.
-Speaking of line search, this is probably the reason why the dampened version
-looks so "bad". I used `scipy.optimize.minimize_scalar` instead of custom
-line search algorithms which is probably not a good fit. Replacing
-this with an alternative algorithm might lead to faster convergence.
-
-While the normal and the dampened version of the inverse iteration both
-seem to be working fine, this cannot be said about the shifted inverse iteration.
-Convergence seems almost random and for some nonlinearity parameters like
-$\beta = 10^2$ it does not
-converge at all. It seems the A-Method is not suited for shifting, which was
-observed empirically for other problems as well.
-The very high number of steps for $\beta = 10^0$ and $\beta = 10^3$ also
-suggests numerical instability.
+The dampened and normal inverse iteration omit similar behaviour, with the dampened
+version outperforming the standard iteration in all test cases. For the line
+search of the dampened version I used `scipy.optimize.minimize_scalar` instead
+of a custom line search algorithm. There might be some gains left on the table
+here still.
+The shifted iteration is a mixed bag. For $\beta \leq 1$ (small nonlinearity)
+the shifted version converges in less than half of the iterations than the other
+versions. For other values it does not work as well, which mathces Hen24's result.
 
 ## Project structure
 
@@ -103,7 +89,8 @@ plots.
 of the function (instead of just plugging $u$ into $A$) to better linearize
 $A$ in each step. This could be implemented and compared to the A-Method.
 Furthermore shifting with the J-Method is said to be highly effective (as opposed
-to the A-Methods abysmal reaction to shifts).
+to the A-Methods abysmal reaction to shifts). If you ever encounter such a problem
+in the wild: Use the J-Method, not this. It's vastly superior.
 - Replace `minimize_scalar` with custom line search algorithm to improve
 performance of the dampened inverse iteration.
 - Currently the program always uses a normalized $1$-Vector
