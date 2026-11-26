@@ -87,9 +87,11 @@ def get_L_M(bound, steps, h_inv_sq):
     Construct the linear operator L_M for the Gross–Pitaevskii equation (GPE).
 
     The operator represents the constant part of the Hamiltonian:
-        L_M = Δ + V,
-    where Δ is the discrete Laplacian and V is the external potential
-    (here taken as the harmonic trap).
+        L_M = -½Δ + V,
+    where -Δ is the discrete (positive) Laplacian from get_L and V is the
+    external potential (here taken as the harmonic trap). The factor ½
+    follows the GPE  -½Δu + Vu + β|u|²u = λu  from [Hen24, Eq. (1)] and
+    [JKM12, Eq. (5.1)].
 
     Parameters
     ----------
@@ -103,13 +105,13 @@ def get_L_M(bound, steps, h_inv_sq):
     Returns
     -------
     scipy.sparse.csr_matrix
-        Sparse CSR matrix representing L_M = Laplacian + Potential.
+        Sparse CSR matrix representing L_M = -½ Laplacian + Potential.
     """
     # Steps = dim_sqrt since we discretize in a (steps, steps) field
     L_N = get_L(steps, h_inv_sq)
     M_V = get_M(bound, steps)
 
-    return L_N + M_V
+    return 0.5 * L_N + M_V
 
 def get_A_squiddle(v, beta, h_inv_sq):
     """

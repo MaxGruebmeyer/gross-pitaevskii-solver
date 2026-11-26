@@ -10,68 +10,46 @@ import logging
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-def grad_squared(v, h, steps):
+def calculate_energy(v, L, V, beta, h_inv_sq):
     """
-    Resize vector to 2D array to calculate x and y gradient.
-    Computes |∇v|^2 (the squared gradient magnitude).
-    
-    Parameters
-    ----------
-    v : ndarray
-        Input vector (flattened 2D grid values).
-    h : float
-        Step size (grid spacing).
-    steps : int
-        Number of grid points in one dimension.
-    
-    Returns
-    -------
-    ndarray
-        Squared gradient magnitude of v on the 2D grid.
-    """
-    v = v.reshape(steps, steps)
-    dv_dx = np.gradient(v, h, axis=0)
-    dv_dy = np.gradient(v, h, axis=1)
+    Calculate the discrete Gross-Pitaevskii energy.
 
-    return dv_dx * dv_dx + dv_dy * dv_dy 
+    Discretization of the energy functional from [Hen24, Eq. (2)]
+        E(u) = ½ ∫ ( ½ |∇u|² + V u² + β/2 u⁴ ) dx
+             = ¼ ∫ |∇u|² + ½ ∫ V u² + β/4 ∫ u⁴,
+    which belongs to the GPE  -½Δu + Vu + β u³ = λu.
 
-
-def calculate_energy(v, V, beta, h, steps):
-    """
-    Calculate the energy of the 2D Gross-Pitaevskii equation.
-
-    The energy functional consists of three parts:
-    - Kinetic energy (from the gradient of v)
-    - Potential energy (from the trapping potential V)
-    - Interaction energy (from particle repulsion)
+    The vector v is Euclidean-normalized (Σ v² = 1), which corresponds to
+    the L²-normalized wavefunction u = v / h (cf. [JKM12, Sec. 5.1]).
+    With integrals replaced by h² Σ this gives
+        E(v) = ¼ vᵀ L v + ½ Σ V v² + β / (4 h²) Σ v⁴,
+    where L is the discrete (positive) Laplacian -Δ_h.
 
     Parameters
     ----------
     v : ndarray
-        Current vector (assumed as flattened 2D input).
+        Current vector (flattened 2D grid values).
+    L : scipy.sparse.spmatrix
+        Discrete Laplacian -Δ_h (see gpe_problem.get_L).
     V : ndarray
-        Potential values on the discretized grid.
+        Potential values on the grid (flattened like v).
     beta : float
         Repulsion constant (nonlinearity parameter).
-    h : float
-        Step size (assumes equidistant discretization).
-    steps : int
-        Number of grid points in one dimension.
+    h_inv_sq : float
+        Inverse squared grid spacing (1/h²).
 
     Returns
     -------
     float
         Computed energy of the system.
     """
-    grad_sq = grad_squared(v, h, steps)
-    h_sq = h * h
     v_sq = v * v
-    
-    kinetic = np.sum(grad_sq) * h_sq
-    potential = 2 * np.sum(V * v_sq) * h_sq
-    interaction = beta * np.sum(v_sq * v_sq) * h_sq
 
-    return .25 * (kinetic + potential + interaction)
+    kinetic = 0.25 * (v @ (L @ v))
+    potential = 0.5 * np.sum(V * v_sq)
+    interaction = 0.25 * beta * h_inv_sq * np.sum(v_sq * v_sq)
+
+    return kinetic + potential + interaction
 
 def inverse_iteration(A, calc_E, dim, max_steps, tol):
     """
@@ -324,6 +302,14 @@ def shifted_inverse_iteration(A, calc_E, dim, max_steps, tol):
         
         u_cur = spsolve(A_u - diags(shift * ones), u_last)
         u_cur /= norm(u_cur)
+
+        # The Rayleigh quotient is >= the smallest eigenvalue of A_u, so
+        # A_u - shift*I has a negative eigenvalue along the ground state and the
+        # solve flips the sign of the ground-state component. Since A(u) only
+        # depends on u², u and -u are equivalent: align the sign with u_last so
+        # that ||u_cur - u_last|| measures actual convergence.
+        if u_cur @ u_last < 0:
+            u_cur = -u_cur
 
         iterated_values[i] = u_cur
         energy[i] = calc_E(u_cur)
