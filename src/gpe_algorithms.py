@@ -51,6 +51,37 @@ def calculate_energy(v, L, V, beta, h_inv_sq):
 
     return kinetic + potential + interaction
 
+def get_start_vector(dim):
+    """
+    Return the normalized constant start vector u⁰ used by all methods.
+    """
+    start_vec = np.ones(dim)
+    return start_vec / norm(start_vec)
+
+def get_history(iterates, energy):
+    """
+    Compute the convergence history from the stored iterates.
+
+    Parameters
+    ----------
+    iterates : ndarray
+        Array of shape (N+1, dim) with the iterates u⁰, ..., uᴺ.
+    energy : ndarray
+        Array of length N+1 with the energies E(u⁰), ..., E(uᴺ).
+
+    Returns
+    -------
+    residuum : ndarray
+        ||uⁿ - uᴺ|| for n = 1, ..., N-1.
+    energy : ndarray
+        E(uⁿ) for n = 0, ..., N (passed through).
+    diffs : ndarray
+        ||uⁿ - uⁿ⁻¹|| for n = 1, ..., N.
+    """
+    residuum = norm(iterates[1:-1] - iterates[-1], axis=1)
+    diffs = norm(np.diff(iterates, axis=0), axis=1)
+    return residuum, energy, diffs
+
 def inverse_iteration(A, calc_E, dim, max_steps, tol):
     """
     Run the general inverse iteration algorithm.
@@ -73,47 +104,45 @@ def inverse_iteration(A, calc_E, dim, max_steps, tol):
     -------
     success : bool
         True if convergence was achieved within the tolerance, False otherwise.
-    iterations : int
-        Number of iterations needed to converge, or np.inf if not successful.
+    n_steps : int
+        Number of iteration steps N that were taken. The solution is the
+        N-th iterate uᴺ (N = max_steps if not successful).
     solution : ndarray
-        The computed solution vector.
+        The last iterate uᴺ.
     residuum : ndarray
-        Array of residuum values over iterations.
+        Distance ||uⁿ - uᴺ|| of each iterate to the last iterate,
+        for n = 1, ..., N-1 (length N-1).
     energy : ndarray
-        Array of energy values over iterations.
+        Energy E(uⁿ) of each iterate including the start vector,
+        for n = 0, ..., N (length N+1).
     diffs : ndarray
-        Array of ||uⁿ - uⁿ⁻¹|| differences for each iteration.
+        Differences ||uⁿ - uⁿ⁻¹|| between consecutive iterates,
+        for n = 1, ..., N (length N).
     """
-    start_vec = np.ones(dim)
-    start_vec /= norm(start_vec)
-    u_last = start_vec
-    
-    iterated_values = np.zeros((max_steps, dim))
-    energy = np.zeros(max_steps)
-    
-    for i in range(0, max_steps):
+    u_last = get_start_vector(dim)
+
+    # Row n holds the n-th iterate uⁿ, row 0 is the start vector
+    iterates = np.zeros((max_steps + 1, dim))
+    energy = np.zeros(max_steps + 1)
+    iterates[0] = u_last
+    energy[0] = calc_E(u_last)
+
+    success = False
+    for n in range(1, max_steps + 1):
         A_u = A(u_last)
         u_cur = spsolve(A_u, u_last)
         u_cur /= norm(u_cur)
 
-        iterated_values[i] = u_cur
-        energy[i] = calc_E(u_cur)
-        
+        iterates[n] = u_cur
+        energy[n] = calc_E(u_cur)
+
         if norm(u_cur - u_last) < tol:
-            residuum = norm(iterated_values[:i] - u_cur, axis=1)
-            diffs = norm(
-                iterated_values[:i] - np.insert(iterated_values, 0, start_vec, axis=0)[:i],
-                axis=1
-            )
-            return (True, i, u_cur, residuum, energy[:i], diffs)
+            success = True
+            break
 
         u_last = u_cur
 
-    diffs = norm(
-        iterated_values - np.insert(iterated_values, 0, start_vec, axis=0)[:-1],
-        axis=1
-    )
-    return (False, np.inf, u_cur, np.array([np.inf]), energy, diffs)
+    return (success, n, u_cur, *get_history(iterates[:n + 1], energy[:n + 1]))
 
 def compute_line(tau, u_cur, u_last):
     """
@@ -178,16 +207,20 @@ def dampened_inverse_iteration(A, calc_E, dim, max_steps, tol):
     -------
     success : bool
         True if convergence was achieved within the tolerance, False otherwise.
-    iterations : int
-        Number of iterations needed to converge, or np.inf if not successful.
+    n_steps : int
+        Number of iteration steps N that were taken. The solution is the
+        N-th iterate uᴺ (N = max_steps if not successful).
     solution : ndarray
-        The computed solution vector.
+        The last iterate uᴺ.
     residuum : ndarray
-        Array of residuum values over iterations.
+        Distance ||uⁿ - uᴺ|| of each iterate to the last iterate,
+        for n = 1, ..., N-1 (length N-1).
     energy : ndarray
-        Array of energy values over iterations.
+        Energy E(uⁿ) of each iterate including the start vector,
+        for n = 0, ..., N (length N+1).
     diffs : ndarray
-        Array of ||uⁿ - uⁿ⁻¹|| differences for each iteration.
+        Differences ||uⁿ - uⁿ⁻¹|| between consecutive iterates,
+        for n = 1, ..., N (length N).
 
     Raises
     ------
@@ -195,15 +228,17 @@ def dampened_inverse_iteration(A, calc_E, dim, max_steps, tol):
         If the optimization of the damping parameter τ fails.
     """
     damping_stop = 1e-3
-    start_vec = np.ones(dim)
-    start_vec /= norm(start_vec)
-    u_last = start_vec
+    u_last = get_start_vector(dim)
 
-    iterated_values = np.zeros((max_steps, dim))
-    energy = np.zeros(max_steps)
-    
+    # Row n holds the n-th iterate uⁿ, row 0 is the start vector
+    iterates = np.zeros((max_steps + 1, dim))
+    energy = np.zeros(max_steps + 1)
+    iterates[0] = u_last
+    energy[0] = calc_E(u_last)
+
     damping = True
-    for i in range(0, max_steps):
+    success = False
+    for n in range(1, max_steps + 1):
         A_u = A(u_last)
         u_cur = spsolve(A_u, u_last)
 
@@ -224,34 +259,26 @@ def dampened_inverse_iteration(A, calc_E, dim, max_steps, tol):
         else:
             u_cur /= norm(u_cur)
 
-        iterated_values[i] = u_cur
-        energy[i] = calc_E(u_cur)
-        
+        iterates[n] = u_cur
+        energy[n] = calc_E(u_cur)
+
         diff = norm(u_cur - u_last)
         if diff < tol:
             # At least one more run to make sure diff < tol isn't because of small damping steps
             if damping:
-                logging.debug(f"Turned off damping after {i + 1} steps because of diff < tol!")
+                logging.debug(f"Turned off damping after {n} steps because of diff < tol!")
                 damping = False
             else:
-                residuum = norm(iterated_values[:i] - u_cur, axis=1)
-                diffs = norm(
-                    iterated_values[:i] - np.insert(iterated_values, 0, start_vec, axis=0)[:i],
-                    axis=1
-                )
-                return (True, i, u_cur, residuum, energy[:i], diffs)
+                success = True
+                break
 
         if damping and diff < damping_stop:
-            logging.debug(f"Turned off damping after {i + 1} steps!")
+            logging.debug(f"Turned off damping after {n} steps!")
             damping = False
-        
+
         u_last = u_cur
 
-    diffs = norm(
-        iterated_values - np.insert(iterated_values, 0, start_vec, axis=0)[:-1],
-        axis=1
-    )
-    return (False, np.inf, u_cur, np.array([np.inf]), energy, diffs)
+    return (success, n, u_cur, *get_history(iterates[:n + 1], energy[:n + 1]))
 
 def shifted_inverse_iteration(A, calc_E, dim, max_steps, tol):
     """
@@ -278,25 +305,32 @@ def shifted_inverse_iteration(A, calc_E, dim, max_steps, tol):
     -------
     success : bool
         True if convergence was achieved within the tolerance, False otherwise.
-    iterations : int
-        Number of iterations needed to converge, or np.inf if not successful.
+    n_steps : int
+        Number of iteration steps N that were taken. The solution is the
+        N-th iterate uᴺ (N = max_steps if not successful).
     solution : ndarray
-        The computed solution vector.
+        The last iterate uᴺ.
     residuum : ndarray
-        Array of residuum values over iterations.
+        Distance ||uⁿ - uᴺ|| of each iterate to the last iterate,
+        for n = 1, ..., N-1 (length N-1).
     energy : ndarray
-        Array of energy values over iterations.
+        Energy E(uⁿ) of each iterate including the start vector,
+        for n = 0, ..., N (length N+1).
     diffs : ndarray
-        Array of ||uⁿ - uⁿ⁻¹|| differences for each iteration.
+        Differences ||uⁿ - uⁿ⁻¹|| between consecutive iterates,
+        for n = 1, ..., N (length N).
     """
     ones = np.ones(dim)
-    start_vec = ones / norm(ones)
-    u_last = start_vec
-    
-    iterated_values = np.zeros((max_steps, dim))
-    energy = np.zeros(max_steps)
-    
-    for i in range(0, max_steps):
+    u_last = get_start_vector(dim)
+
+    # Row n holds the n-th iterate uⁿ, row 0 is the start vector
+    iterates = np.zeros((max_steps + 1, dim))
+    energy = np.zeros(max_steps + 1)
+    iterates[0] = u_last
+    energy[0] = calc_E(u_last)
+
+    success = False
+    for n in range(1, max_steps + 1):
         A_u = A(u_last)
         shift = u_last.T @ A_u @ u_last / (u_last.T @ u_last)
         
@@ -311,21 +345,13 @@ def shifted_inverse_iteration(A, calc_E, dim, max_steps, tol):
         if u_cur @ u_last < 0:
             u_cur = -u_cur
 
-        iterated_values[i] = u_cur
-        energy[i] = calc_E(u_cur)
-        
+        iterates[n] = u_cur
+        energy[n] = calc_E(u_cur)
+
         if norm(u_cur - u_last) < tol:
-            residuum = norm(iterated_values[:i] - u_cur, axis=1)
-            diffs = norm(
-                iterated_values[:i] - np.insert(iterated_values, 0, start_vec, axis=0)[:i],
-                axis=1
-            )
-            return (True, i, u_cur, residuum, energy[:i], diffs)
+            success = True
+            break
 
         u_last = u_cur
 
-    diffs = norm(
-        iterated_values - np.insert(iterated_values, 0, start_vec, axis=0)[:-1],
-        axis=1
-    )
-    return (False, np.inf, u_cur, np.array([np.inf]), energy, diffs)
+    return (success, n, u_cur, *get_history(iterates[:n + 1], energy[:n + 1]))
