@@ -140,7 +140,7 @@ def get_L_M(bound, steps, h_inv_sq):
 
     return 0.5 * L_N + M_V
 
-def get_A_squiddle(v, beta, h_inv_sq):
+def get_nonlinear_term(v, beta, h_inv_sq):
     """
     Construct the nonlinear interaction term for the Gross–Pitaevskii equation.
 
@@ -191,4 +191,4 @@ def A_v(L_M, v, beta, h_inv_sq):
     scipy.sparse.spmatrix
         Sparse matrix representing the full operator A(v).
     """
-    return L_M + get_A_squiddle(v, beta, h_inv_sq)
+    return L_M + get_nonlinear_term(v, beta, h_inv_sq)

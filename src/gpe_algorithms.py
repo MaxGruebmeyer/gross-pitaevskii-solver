@@ -71,16 +71,16 @@ def get_history(iterates, energy):
 
     Returns
     -------
-    residuum : ndarray
+    dist_to_last : ndarray
         ||uⁿ - uᴺ|| for n = 1, ..., N-1.
     energy : ndarray
         E(uⁿ) for n = 0, ..., N (passed through).
     diffs : ndarray
         ||uⁿ - uⁿ⁻¹|| for n = 1, ..., N.
     """
-    residuum = norm(iterates[1:-1] - iterates[-1], axis=1)
+    dist_to_last = norm(iterates[1:-1] - iterates[-1], axis=1)
     diffs = norm(np.diff(iterates, axis=0), axis=1)
-    return residuum, energy, diffs
+    return dist_to_last, energy, diffs
 
 def inverse_iteration(A, calc_E, dim, max_steps, tol):
     """
@@ -109,7 +109,7 @@ def inverse_iteration(A, calc_E, dim, max_steps, tol):
         N-th iterate uᴺ (N = max_steps if not successful).
     solution : ndarray
         The last iterate uᴺ.
-    residuum : ndarray
+    dist_to_last : ndarray
         Distance ||uⁿ - uᴺ|| of each iterate to the last iterate,
         for n = 1, ..., N-1 (length N-1).
     energy : ndarray
@@ -212,7 +212,7 @@ def dampened_inverse_iteration(A, calc_E, dim, max_steps, tol):
         N-th iterate uᴺ (N = max_steps if not successful).
     solution : ndarray
         The last iterate uᴺ.
-    residuum : ndarray
+    dist_to_last : ndarray
         Distance ||uⁿ - uᴺ|| of each iterate to the last iterate,
         for n = 1, ..., N-1 (length N-1).
     energy : ndarray
@@ -317,7 +317,7 @@ def shifted_inverse_iteration(A, calc_E, dim, max_steps, tol, sigma):
         N-th iterate uᴺ (N = max_steps if not successful).
     solution : ndarray
         The last iterate uᴺ.
-    residuum : ndarray
+    dist_to_last : ndarray
         Distance ||uⁿ - uᴺ|| of each iterate to the last iterate,
         for n = 1, ..., N-1 (length N-1).
     energy : ndarray
