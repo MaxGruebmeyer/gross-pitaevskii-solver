@@ -1,14 +1,33 @@
 # Gross-Pitaevskii Equation (GPE) Solver
 
-This project implements and analyzes numerical methods for finding the ground
-state solution of the two-dimensional **Gross-Pitaevskii Equation (GPE)**.
+This repo contains the work I submitted for the seminar
+"Numerical methods for solving nonlinear Eigenvalue problems" given by Prof.
+Tatjana Stykel at the University of Augsburg, Germany in the Summer of 2025 and
+aimed at advanced undergraduate students. I attended it as a second-year undergrad.
+
+I presented and implemented the A-Method, which has been presented in
+[JKM12](https://arxiv.org/abs/1212.0417) and further discussed in
+[Hen24](https://arxiv.org/abs/2202.07593). It is a numerical method for finding
+the smallest eigenvalue for a nonlinear eigenproblem with a spectral gap.
+We used it to find the ground state solution of the (in our case two-dimensional)
+**Gross-Pitaevskii Equation (GPE)**.
 The GPE is a nonlinear partial differential equation (PDE) used to model the behavior
 of Bose-Einstein condensates (BECs). This project reformulates the PDE into
-a nonlinear eigenvalue problem, which is then solved using various iterative
-algorithms which have been presented in [JKM12](https://arxiv.org/abs/1212.0417)
-and further discussed in [Hen24](https://arxiv.org/abs/2202.07593).
+a nonlinear eigenvalue problem, which is then solved via the A-Method.
+We present the A-Method in three variations: The normal A-Method, a damped version,
+and a shifted version.
 
-## Motivation
+You will find both the writeup (in german), the presentation (also in german),
+as well as the code here. Both the writeup and presentation can of course be built
+locally, or downloaded from [here](https://github.com/MaxGruebmeyer/gross-pitaevskii-solver/releases/tag/pdf-latest).
+The code (found in `src`) is split into three files:
+-   `main.ipynb`: The main Python notebook. Run it to execute the algorithms and
+    generate the plots.
+-   `gpe_problem.py`: Builds the required matrices (2D Laplacian, ...) and functions,
+    as well as the full operator $A(v)$ to numerically simulate the GPE.
+-   `gpe_algorithms.py`: Contains the actual A-Method algorithms
+
+## Motivation for solving the GPE
 
 The ground state of the GPE corresponds to the solution with the minimum energy.
 Finding this solution is crucial for understanding the properties of BECs,
@@ -64,18 +83,10 @@ of a custom line search algorithm. There might be some gains left on the table
 here still.
 The shifted iteration is a mixed bag. For $\beta \leq 1$ (small nonlinearity)
 the shifted version converges in less than half of the iterations than the other
-versions. For other values it does not work as well, which mathces Hen24's result.
+versions. For other values it does not work as well, which matches Hen24's result.
 
-## Project structure
-
-- `gpe_algorithms.py`: Contains the implementations of the inverse iteration,
-dampened inverse iteration, and shifted inverse iteration algorithms.
-Also includes the energy functional calculation.
-- `gpe_problem.py`: Defines the problem setup, including the discretization of the
-2D Laplacian, the harmonic potential, and the construction of the nonlinear
-operator $A(u)$.
-- `main.ipynb`: A Jupyter Notebook for running the simulations, generating plots
-and analyzing the results.
+A more detailled analysis (and proofs of some results) can be found in the german
+writeup.
 
 ## How to run
 
