@@ -1,0 +1,57 @@
+name: Build PDFs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "writeup/**"
+      - ".github/workflows/build-pdf.yml"
+  workflow_dispatch:
+
+# Two pushes in quick succession: let the newer one win instead of racing
+# on the release upload.
+concurrency:
+  group: build-pdf
+  cancel-in-progress: true
+
+permissions:
+  contents: write # needed to move the tag and update the release
+
+env:
+  TAG: pdf-latest
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile LaTeX
+        uses: xu-cheng/latex-action@v3
+        with:
+          # Pinned to match the local toolchain the writeup is checked against
+          # (Debian trixie's "TeX Live 2025/dev" is really the 2024 release:
+          # LaTeX2e 2024-11-01, tcolorbox 6.4.1).
+          texlive_version: 2024
+          working_directory: writeup
+          root_file: |
+            seminar.tex
+            presentation.tex
+          # latexmk runs pdflatex/bibtex as many times as needed.
+          args: -pdf -interaction=nonstopmode -halt-on-error -file-line-error
+
+      - name: Publish to rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Point the tag at the commit we just built.
+          git tag -f "$TAG"
+          git push -f origin "refs/tags/$TAG"
+
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "Latest PDFs" --notes "" --latest
+          fi
+
+          gh release edit "$TAG" \
+            --notes "Automatically built from ${GITHUB_SHA::7} on $(date -u +'%Y-%m-%d %H:%M UTC')."
+          gh release upload "$TAG" writeup/seminar.pdf writeup/presentation.pdf --clobber
