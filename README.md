@@ -27,6 +27,12 @@ The code (found in `src`) is split into three files:
     as well as the full operator $A(v)$ to numerically simulate the GPE.
 -   `gpe_algorithms.py`: Contains the actual A-Method algorithms
 
+**Note that the A-Method is not the best way to solve this problem. If you want
+to tackle this (or another nonlinear eigenvalue problem with a spectral gap)
+you may want to look at the J-Method instead. It reacts more favourably to
+shifts, and is overall the superior method.** It is neither implemented here in
+code, or covered in the writeup.
+
 ## Motivation for solving the GPE
 
 The ground state of the GPE corresponds to the solution with the minimum energy.
